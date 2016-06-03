@@ -1,0 +1,18 @@
+{
+    "name": "aros/omnifetch-phalcon",
+    "type": "library",
+    "description": "Phalcon Fetching Library for simplifying fetch API endpoints",
+    "keywords": ["fetch","fetching", "phalcon"],
+    "homepage": "https://github.com/lordrah/omnifetch-phalcon",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Abdul-Rahman Shitu",
+            "email": "shituabdulrahman@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    }
+}
