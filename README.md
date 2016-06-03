@@ -6,7 +6,7 @@ OmniFetch for Phalcon is useful library that would suit most of your fetching AP
 * For the library to work properly, the relationships between Models need to be set up fully.
 
 ## Installation 
-This library can be found on Packagist for an easier management of projects dependencies using Composer
+This library can be found on [Packagist](https://packagist.org/packages/aros/omnifetch-phalcon) for an easier management of projects dependencies using Composer
 
 ## Public Methods
 * **getAll**(string **$main_model**, array **$params**, array **$settings**)
