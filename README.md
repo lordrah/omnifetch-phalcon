@@ -1,12 +1,26 @@
 # OmniFetch for Phalcon
-OmniFetch for Phalcon is useful library that would suit most of your fetching API endpoint needs. It helps you in fetching row(s) of data based on a particular model and attach data from other related models easily. It also allows for complex filter conditions using combinations of **AND** and **OR** Boolean operators and the use of **LIKE**, **IS** and **IS NOT** comparison operators with pagination. 
+> OmniFetch for Phalcon is useful library that would suit most of your fetching API endpoint needs. It helps you in fetching row(s) of data based on a particular model and attach data from other related models easily. It also allows for complex filter conditions using combinations of **AND** and **OR** Boolean operators and the use of **LIKE**, **IS** and **IS NOT** comparison operators with pagination. 
+
+[![Total Downloads](https://img.shields.io/packagist/dt/aros/omnifetch-phalcon.svg?style=flat-square)](https://packagist.org/packages/aros/omnifetch-phalcon)
 
 ## Dependencies
 * Installed Phalcon <= 2.1.0 
 * For the library to work properly, the relationships between Models need to be set up fully.
 
 ## Installation 
-This library can be found on [Packagist](https://packagist.org/packages/aros/omnifetch-phalcon) for an easier management of projects dependencies using Composer
+The preferred way to install this extension is through [Composer](https://getcomposer.org)
+
+``` bash
+$ composer require aros/omnifetch-phalcon
+```
+
+Another alternative is to simply add the following line to the require block of your `composer.json` file.
+
+```
+"aros/omnifetch-phalcon": "dev-master"
+```
+
+Then run `composer install` or `composer update` to download it and have the autoloader updated.
 
 ## Public Methods
 * **getAll**(string **$main_model**, array **$params**, array **$settings**)
