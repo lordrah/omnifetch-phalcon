@@ -192,7 +192,13 @@ The result would be:
                 "name": "biography"
             }
         }
-    ]
+    ],
+    "pagination": {
+        "next": 1,
+        "previous": null,
+        "total_count": "6",
+        "count": 3
+    }
 }
 ```
 
