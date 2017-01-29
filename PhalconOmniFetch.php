@@ -16,6 +16,12 @@ class PhalconOmniFetch extends BaseOmniFetch {
     protected $main_model_obj;
 
     /**
+     * List of models that have been joined
+     * @var array
+     */
+    protected $join_models = [];
+
+    /**
      * Implements this to get the main model data
      * @param bool $get_single
      * @throws \Exception
@@ -92,14 +98,17 @@ class PhalconOmniFetch extends BaseOmniFetch {
             return;
         }
 
+        $embed_arr = explode('.', $embed);
+
         $primary_key = $this->settings[self::SETTING_MAIN_MODEL_PRIMARY_KEY];
-        $columns = ["$this->main_model.$primary_key", "$embed.*"];
+        $innermost_embed = $embed_arr[count($embed_arr) - 1];
+        $columns = ["$this->main_model.$primary_key", "{$innermost_embed}.*"];
 
         $this->main_model_obj = new $this->main_model();
         $manager = $this->main_model_obj->getModelsManager();
 
         //checking if $embed is a valid relation of the main model
-        $relation = $manager->getRelationByAlias($this->main_model, $embed);
+        $relation = $this->getValidRelation($embed_arr);
         if (empty($relation)){
             return;
         }
@@ -109,7 +118,8 @@ class PhalconOmniFetch extends BaseOmniFetch {
             ->columns($columns)
             ->from($this->main_model);
 
-        $this->formJoins($builder, [$embed]);
+        $this->join_models = [];
+        $this->formJoins($builder, $embed_arr);
 
         //using the primary keys of the main model to fetch the relevant related data
         $filters[] = [
@@ -132,30 +142,67 @@ class PhalconOmniFetch extends BaseOmniFetch {
         //Fill in data
         foreach ($result_set as $result_obj){
             if ($is_array){
-                $this->result[$result_obj[$primary_key]][$embed][] = $result_obj[lcfirst($embed)]->toArray();
+                $this->result[$result_obj[$primary_key]][$embed][] = $result_obj[lcfirst($innermost_embed)]->toArray();
             } else {
-                $this->result[$result_obj[$primary_key]][$embed] = $result_obj[lcfirst($embed)]->toArray();
+                $this->result[$result_obj[$primary_key]][$embed] = $result_obj[lcfirst($innermost_embed)]->toArray();
             }
         }
     }
 
     /**
+     * Gets the Relation if the embed is a valid relation to the main model. Also handles nested relationships
+     * @param array $relation_models - an array representing models in a nested relation in the order of relation, e.g A.B.C -> [A,B,C]
+     * @return Relation
+     */
+    protected function getValidRelation($relation_models)
+    {
+        /**
+         * @var Relation $actual_relation
+         */
+        $manager = $this->main_model_obj->getModelsManager();
+        $_model = $this->main_model;
+        $actual_relation = null;
+
+        foreach ($relation_models as $model){
+            $relation = $manager->getRelationByAlias($_model, $model);
+            if (empty($relation)){
+                return null;
+            }
+
+            if (empty($actual_relation) || !in_array($actual_relation->getType(), [Relation::HAS_MANY, Relation::HAS_MANY_THROUGH])){
+                $actual_relation = $relation;
+            }
+
+            $manager = (new $model())->getModelsManager();
+            $_model = $model;
+        }
+
+        return $actual_relation;
+    }
+
+    /**
      * This adds the joins to the builder
      * @param \Phalcon\Mvc\Model\Query\BuilderInterface $builder
-     * @param array|null $relation_models
+     * @param array|null $relation_models - an array representing models in a nested relation in the order of relation, e.g A.B.C -> [A,B,C]
      */
     protected function formJoins(&$builder, $relation_models = null)
     {
         $manager = $this->main_model_obj->getModelsManager();
+        $_model = $this->main_model;
 
-        foreach ($relation_models as $model){
-            //checking if the relation is a valid main model relation
-            $relation = $manager->getRelationByAlias($this->main_model, $model);
-            if (empty($relation)){
-                continue;
+        foreach ($relation_models as $model) {
+            $relation = $manager->getRelationByAlias($_model, $model);
+            if (empty($relation)) {
+                return null;
             }
 
-            $builder->innerJoin($model);
+            if (!in_array($model, $this->join_models)) {
+                $join_condition = "{$_model}.{$relation->getFields()} = {$model}.{$relation->getReferencedFields()}";
+                $builder->innerJoin($model, $join_condition);
+            }
+
+            $manager = (new $model())->getModelsManager();
+            $_model = $model;
         }
     }
 
@@ -165,15 +212,14 @@ class PhalconOmniFetch extends BaseOmniFetch {
      */
     protected function formJoinsUsingFilters(&$builder)
     {
-        $relation_models = [];
+        $this->join_models = [];
         foreach ($this->filters as $filter){
             $field_parts = explode('.', $filter[self::FILTER_PARAM_FIELD]);
             if (count($field_parts) > 1) {
-                $relation_models[] = $field_parts[0];
+                unset($field_parts[count($field_parts) - 1]);
+                $this->formJoins($builder, $field_parts);
             }
         }
-
-        $this->formJoins($builder, $relation_models);
     }
 
     /**
@@ -188,13 +234,20 @@ class PhalconOmniFetch extends BaseOmniFetch {
         foreach ($filters as $filter){
             $param_id = "p_$param_count";
 
+            $actual_field = $filter[self::FILTER_PARAM_FIELD];
+            $actual_field_arr = explode('.', $filter[self::FILTER_PARAM_FIELD]);
+            $count_parts = count($actual_field_arr);
+            if ($count_parts > 2){
+                $actual_field = $actual_field_arr[$count_parts - 2] . '.' . $actual_field_arr[$count_parts - 1];
+            }
+
             if (is_array($filter[self::FILTER_PARAM_VALUE])){
                 switch ($filter[self::FILTER_PARAM_COMPARATOR]){
                     case self::CMP_NOT:
-                        $builder->notInWhere($filter[self::FILTER_PARAM_FIELD], $filter[self::FILTER_PARAM_VALUE]);
+                        $builder->notInWhere($actual_field, $filter[self::FILTER_PARAM_VALUE]);
                         break;
                     default:
-                        $builder->inWhere($filter[self::FILTER_PARAM_FIELD], $filter[self::FILTER_PARAM_VALUE]);
+                        $builder->inWhere($actual_field, $filter[self::FILTER_PARAM_VALUE]);
                         break;
                 }
             } else {
@@ -202,16 +255,16 @@ class PhalconOmniFetch extends BaseOmniFetch {
                 $condition = null;
                 switch ($filter[self::FILTER_PARAM_COMPARATOR]){
                     case self::CMP_IS:
-                        $condition = "{$filter[self::FILTER_PARAM_FIELD]} IS :$param_id:";
+                        $condition = "{$actual_field} IS :$param_id:";
                         break;
                     case self::CMP_IS_NOT:
-                        $condition = "NOT {$filter[self::FILTER_PARAM_FIELD]} IS :$param_id:";
+                        $condition = "NOT {$actual_field} IS :$param_id:";
                         break;
                     case self::CMP_LIKE:
-                        $condition = "{$filter[self::FILTER_PARAM_FIELD]} LIKE :$param_id:";
+                        $condition = "{$actual_field} LIKE :$param_id:";
                         break;
                     default:
-                        $condition = "{$filter[self::FILTER_PARAM_FIELD]} {$filter[self::FILTER_PARAM_COMPARATOR]} :$param_id:";
+                        $condition = "{$actual_field} {$filter[self::FILTER_PARAM_COMPARATOR]} :$param_id:";
                         break;
                 }
 
