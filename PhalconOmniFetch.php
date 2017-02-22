@@ -199,6 +199,7 @@ class PhalconOmniFetch extends BaseOmniFetch {
             if (!in_array($model, $this->join_models)) {
                 $join_condition = "{$_model}.{$relation->getFields()} = {$model}.{$relation->getReferencedFields()}";
                 $builder->innerJoin($model, $join_condition);
+                $this->join_models[$model] = $model;
             }
 
             $manager = (new $model())->getModelsManager();
