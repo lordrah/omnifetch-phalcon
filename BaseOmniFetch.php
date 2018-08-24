@@ -217,11 +217,11 @@ abstract class BaseOmniFetch implements OmniFetchInterface {
     }
 
     /**
-     * @param array $order_by
+     * @param string $order_by
      */
     public function setOrderBy($order_by)
     {
-        $this->order_by =(preg_match('/^([a-zA-Z0-9\s,.]*)$/', $order_by)) ? $order_by : null;
+        $this->order_by = (preg_match('/^([\w\s,.]*)$/i', $order_by)) ? $order_by : null;
     }
 
     /**
